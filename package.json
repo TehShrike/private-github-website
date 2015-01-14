@@ -1,0 +1,18 @@
+{
+  "name": "private-github-website",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "TehShrike",
+  "license": "WTFPL",
+  "dependencies": {
+    "github": "^0.2.3",
+    "just-login-core": "^1.2.7",
+    "just-login-emailer": "^1.1.0",
+    "promise": "^6.0.1",
+    "sync-github-to-fs": "^1.0.0"
+  }
+}
