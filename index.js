@@ -1,12 +1,22 @@
 var sync = require('sync-github-to-fs')
 var st = require('st')
 var http = require('http')
+var path = require('path')
+
+var staticContentPath = '/manager'
 
 module.exports = function createServer(github, repoOptions, options) {
-	var serve = st({
+	options.path = options.path || path.join(os.tmpdir(), Math.random().toString().slice(2))
+
+	var serveContentFromRepo = st({
 		path: options.path,
 		index: false,
 		passthrough: false
+	})
+	var serveStaticContent = st({
+		path: './static',
+		url: staticContentPath,
+		cache: false
 	})
 
 	function syncRepoToDisk() {
@@ -20,6 +30,8 @@ module.exports = function createServer(github, repoOptions, options) {
 	syncRepoToDisk()
 
 	return http.createServer(function(req, res) {
-		serve(req, res)
+		if (!serveStaticContent(req, res)) {
+			serveContentFromRepo(req, res)
+		}
 	})
 }
