@@ -9,11 +9,16 @@ var sessionCookieId = 'sweetSessionIdentifier'
 domready(function() {
 	var btn = document.getElementById('signInButton')
 	var input = document.getElementById('emailAddressInput')
+	var form = document.querySelector('form')
 
-	btn.addEventListener('click', function() {
-		var sessionId = cookie.parse(document.cookie)[sessionCookieId]
+	function auth(event) {
+		var sessionId = cookie.parse(document.cookie)[sessionCookieId] || window[sessionCookieId]
 		socket.emit('beginAuthentication', sessionId, input.value)
-	})
 
-	console.log(btn)
+		event.preventDefault()
+		return false;
+	}
+
+
+	form.addEventListener('submit', auth)
 })

@@ -26,55 +26,58 @@ module.exports = function createServer(github, repoOptions, options) {
 
 	var serveContentFromRepo = st({
 		path: options.path,
-		index: false,
+		index: 'index.html',
 		passthrough: false
 	})
 	var servePublicContent = st({
 		path: './public',
 		url: publicPath,
+		passthrough: true,
 		cache: false,
 		index: 'index.html'
 	})
 
 	function syncRepoToDisk() {
-		console.log('syncing to', options.path)
-		sync(github, repoOptions, options.path, function(err) {
-			console.log('finished sync to disk', err)
-		})
+		sync(github, repoOptions, options.path)
 	}
 
 	setInterval(syncRepoToDisk, options.refresh || 60 * 1000).unref()
 	syncRepoToDisk()
 
-	var server = http.createServer(function(req, res) {
-		var cookies = new Cookie(req, res)
-
-		var sessionId = cookies.get(sessionCookieId)
-		console.log('request came in with session id', sessionId)
-
-		if (!sessionId) {
-			sessionId = uuid()
-			cookies.set(sessionCookieId, sessionId, {
-				domain: 'localhost.com',
-				httpOnly: false
-			})
-		}
-
-		console.log(req.url)
-
-		if (!servePublicContent(req, res)) {
-			console.log('nothing in public content?!?!')
-			serveContentFromRepo(req, res)
-		}
-	})
+	var server = http.createServer(app.bind(null, serveContentFromRepo, servePublicContent))
 
 	var io = socketio(server)
 	io.on('connection', function(socket) {
 		socket.on('beginAuthentication', function(sessionId, emailAddress) {
-			jlc.beginAuthentication(sessionId, emailAddress)
+			if (sessionId && emailAddress) {
+				jlc.beginAuthentication(sessionId, emailAddress, function(err) {
+					err && console.log('error?!?!?!', err.message || err)
+				})
+			}
 		})
 	})
 
 	return server
 }
 
+function app(serveContentFromRepo, servePublicContent, req, res) {
+	var cookies = new Cookie(req, res)
+	var sessionId = cookies.get(sessionCookieId)
+
+	// session management
+	if (!sessionId) {
+		sessionId = uuid()
+		cookies.set(sessionCookieId, sessionId, {
+			domain: 'localhost.com',
+			httpOnly: false
+		})
+	}
+
+	// routing
+	if (req.url === '/public/session.js') {
+		res.setHeader('Content-Type', 'text/javascript')
+		res.end(sessionCookieId + '="' + sessionId + '"')
+	} else if (!servePublicContent(req, res)) {
+		serveContentFromRepo(req, res)
+	}
+}
