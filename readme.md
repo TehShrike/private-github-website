@@ -9,3 +9,9 @@ Check out [server.js](https://github.com/TehShrike/private-github-website/blob/m
 - [node-github](https://github.com/mikedeboer/node-github/) (to be replaced with [jsgit](https://github.com/creationix/jsgit)?)
 - [just-login](http://justlogin.xyz/) for email address authentication
 - [st](https://github.com/isaacs/st) for static file serving
+
+## Todo
+
+- load a list of allowed email addresses from the repo
+- user feedback that an email has been sent
+- actually sending emails

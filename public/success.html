@@ -1,0 +1,21 @@
+<!doctype html>
+<html>
+	<head>
+		<title>Successfully logged in</title>
+		<link href="bootstrap.min.css" rel="stylesheet">
+		<meta charset="utf-8">
+	</head>
+	<body>
+		<div class="center-block" style="width: 45em; margin-top: 4em">
+			<h1>You successfully logged in!</h1>
+			<p class="lead">Go back to your original browser window to browse around.</p>
+			<p>You can close this window...</p>
+		</div>
+		<script>
+			setTimeout(function() {
+				window.close()
+				window.open('','_self').close() // http://stackoverflow.com/a/18776480/201789
+			}, 3000)
+		</script>
+	</body>
+</html>

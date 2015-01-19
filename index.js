@@ -8,15 +8,20 @@ var uuid = require('random-uuid-v4')
 var levelmem = require('level-mem')
 var JustLoginCore = require('just-login-core')
 var justLoginDebouncer = require('just-login-debouncer')
+var os = require('os')
 require('es6-shim')
 
 var publicPath = '/public'
 var sessionCookieId = 'sweetSessionIdentifier'
+var tokenPrefix = public('auth?token=')
+
+function public(str) {
+	return path.join(publicPath, str)
+}
 
 module.exports = function createServer(github, repoOptions, options) {
 	options.path = options.path || path.join(os.tmpdir(), Math.random().toString().slice(2))
 
-	var tokenToSocket = {}
 	var db = levelmem('jlc')
 	var jlc = JustLoginCore(db)
 	var debounceDb = levelmem('debouncing')
@@ -36,36 +41,23 @@ module.exports = function createServer(github, repoOptions, options) {
 	})
 
 	function syncRepoToDisk() {
+		console.log('syncing to', options.path)
 		sync(github, repoOptions, options.path)
 	}
 
 	setInterval(syncRepoToDisk, options.refresh || 60 * 1000).unref()
 	syncRepoToDisk()
 
-	var server = http.createServer(app.bind(null, serveContentFromRepo, servePublicContent))
-
+	var server = http.createServer()
 	var io = socketio(server)
-	io.on('connection', function(socket) {
-		socket.on('beginAuthentication', function(sessionId, emailAddress) {
-			if (sessionId && emailAddress) {
-				jlc.beginAuthentication(sessionId, emailAddress, function(err, credentials) {
-					if (err) {
-						console.log('error?!?!?!', err.message || err)
-						if (err.debounce) {
-							socket.emit('warning', 'Too many login requests! Please wait ' + Math.round(credentials.remaining / 1000) + ' seconds.')
-						}
-					} else {
-						console.log(credentials.contactAddress + ' has ' + credentials.token + ' as their token.')
-					}
-				})
-			}
-		})
-	})
+
+	server.on('request', httpHandler.bind(null, serveContentFromRepo, servePublicContent, io, jlc))
+	io.on('connection', socketHandler.bind(null, jlc))
 
 	return server
 }
 
-function app(serveContentFromRepo, servePublicContent, req, res) {
+function httpHandler(serveContentFromRepo, servePublicContent, io, jlc, req, res) {
 	var cookies = new Cookie(req, res)
 	var sessionId = cookies.get(sessionCookieId)
 
@@ -78,19 +70,66 @@ function app(serveContentFromRepo, servePublicContent, req, res) {
 		})
 	}
 
-	var tokenPrefix = '/public/auth?token='
-
 	// routing
-	if (req.url === '/public/session.js') {
+	if (req.url === public('session.js')) {
 		res.setHeader('Content-Type', 'text/javascript')
 		res.end(sessionCookieId + '="' + sessionId + '"')
 	} else if (req.url.startsWith(tokenPrefix)) {
 		var token = req.url.substr(tokenPrefix.length)
 		console.log('authenticating', token)
-		jlc.authenticate(token, function(emailAddress) {
+		jlc.authenticate(token, function(err, credentials) {
+			var target = public('success.html')
+			if (err) {
+				console.log('Someone had an error authenticating at the token endpoint', err.message || err)
+				target = public('index.html')
+			} else {
+				console.log('authenticated session', credentials.sessionId)
+				console.log('authenticated address', credentials.contactAddress, credentials)
+				io.to(credentials.sessionId).emit('authenticated', credentials.contactAddress)
+			}
 
+			res.writeHead(303, {
+				'Location': target
+			})
+			res.end()
 		})
-	} else if (!servePublicContent(req, res)) {
-		serveContentFromRepo(req, res)
+	} else if (!req.url.startsWith('/socket.io/') && !servePublicContent(req, res)) {
+		jlc.isAuthenticated(sessionId, function(err, emailAddress) {
+			if (err) {
+				res.writeHead(500)
+				res.end(err.message || err)
+			} else if (emailAddress) {
+				serveContentFromRepo(req, res)
+			} else {
+				res.writeHead(303, {
+					'Location': public('index.html')
+				})
+				res.end()
+			}
+		})
 	}
+}
+
+function socketHandler(jlc, socket) {
+	var sessionId = new Cookie(socket.request).get(sessionCookieId)
+	if (sessionId) {
+		socket.join(sessionId)
+	} else {
+		console.error('socket connection happened without a session! BORKED')
+	}
+
+	socket.on('beginAuthentication', function(sessionId, emailAddress) {
+		if (sessionId && emailAddress) {
+			jlc.beginAuthentication(sessionId, emailAddress, function(err, credentials) {
+				if (err) {
+					console.log('error?!?!?!', err.message || err)
+					if (err.debounce) {
+						socket.emit('warning', 'Too many login requests! Please wait ' + Math.round(credentials.remaining / 1000) + ' seconds.')
+					}
+				} else {
+					console.log(credentials.contactAddress, tokenPrefix + credentials.token)
+				}
+			})
+		}
+	})
 }
