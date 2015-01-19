@@ -3,6 +3,9 @@ var socketio = require('socket.io')
 var Cookie = require('cookies')
 var uuid = require('random-uuid-v4')
 var userAccess = require('./authenticated-users')
+var JustLoginCore = require('just-login-core')
+var justLoginDebouncer = require('just-login-debouncer')
+var levelmem = require('level-mem')
 
 var http = require('http')
 var path = require('path')
@@ -16,8 +19,11 @@ function public(str) {
 	return path.join(publicPath, str)
 }
 
+module.exports = function(privateContentPath, jlcDb) {
+	var jlc = JustLoginCore(jlcDb)
+	var debounceDb = levelmem('debouncing')
+	justLoginDebouncer(jlc, debounceDb)
 
-module.exports = function(privateContentPath, jlc) {
 	var serveContentFromRepo = st({
 		path: privateContentPath,
 		index: 'index.html',
