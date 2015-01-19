@@ -20,14 +20,13 @@ domready(function() {
 	hidden(info, true)
 
 	function auth(event) {
-		hidden(warning, true)
-		classes.add(btn, 'disabled')
-
-		hidden(info, false)
-
 		var emailAddress = input.value
 
+		hidden(warning, true)
+		hidden(info, false)
 		info.textContent = 'Email sent to ' + emailAddress + '...'
+
+		classes.add(btn, 'disabled')
 
 		var sessionId = cookie.parse(document.cookie)[sessionCookieId] || window[sessionCookieId]
 		socket.emit('beginAuthentication', sessionId, emailAddress)
@@ -38,6 +37,7 @@ domready(function() {
 
 	socket.on('warning', function(msg) {
 		hidden(warning, false)
+		hidden(info, true)
 		warning.textContent = msg
 	})
 

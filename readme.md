@@ -4,7 +4,7 @@ Files are regularly updated from the repository to be served.
 
 Check out [server.js](https://github.com/TehShrike/private-github-website/blob/master/server.js) to see a server started.
 
-## Uses
+## Primarily composed of
 
 - [node-github](https://github.com/mikedeboer/node-github/) (to be replaced with [jsgit](https://github.com/creationix/jsgit)?)
 - [just-login](http://justlogin.xyz/) for email address authentication
@@ -12,6 +12,5 @@ Check out [server.js](https://github.com/TehShrike/private-github-website/blob/m
 
 ## Todo
 
-- load a list of allowed email addresses from the repo
 - user feedback that an email has been sent
 - actually sending emails
