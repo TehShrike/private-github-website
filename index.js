@@ -8,6 +8,7 @@ var uuid = require('random-uuid-v4')
 var levelmem = require('level-mem')
 var JustLoginCore = require('just-login-core')
 var justLoginDebouncer = require('just-login-debouncer')
+require('es6-shim')
 
 var publicPath = '/public'
 var sessionCookieId = 'sweetSessionIdentifier'
@@ -15,14 +16,11 @@ var sessionCookieId = 'sweetSessionIdentifier'
 module.exports = function createServer(github, repoOptions, options) {
 	options.path = options.path || path.join(os.tmpdir(), Math.random().toString().slice(2))
 
+	var tokenToSocket = {}
 	var db = levelmem('jlc')
 	var jlc = JustLoginCore(db)
 	var debounceDb = levelmem('debouncing')
 	justLoginDebouncer(jlc, debounceDb)
-
-	jlc.on('authentication initiated', function (loginRequest) {
-		console.log(loginRequest.contactAddress + ' has ' + loginRequest.token + ' as their token.')
-	})
 
 	var serveContentFromRepo = st({
 		path: options.path,
@@ -50,8 +48,15 @@ module.exports = function createServer(github, repoOptions, options) {
 	io.on('connection', function(socket) {
 		socket.on('beginAuthentication', function(sessionId, emailAddress) {
 			if (sessionId && emailAddress) {
-				jlc.beginAuthentication(sessionId, emailAddress, function(err) {
-					err && console.log('error?!?!?!', err.message || err)
+				jlc.beginAuthentication(sessionId, emailAddress, function(err, credentials) {
+					if (err) {
+						console.log('error?!?!?!', err.message || err)
+						if (err.debounce) {
+							socket.emit('warning', 'Too many login requests! Please wait ' + Math.round(credentials.remaining / 1000) + ' seconds.')
+						}
+					} else {
+						console.log(credentials.contactAddress + ' has ' + credentials.token + ' as their token.')
+					}
 				})
 			}
 		})
@@ -73,10 +78,18 @@ function app(serveContentFromRepo, servePublicContent, req, res) {
 		})
 	}
 
+	var tokenPrefix = '/public/auth?token='
+
 	// routing
 	if (req.url === '/public/session.js') {
 		res.setHeader('Content-Type', 'text/javascript')
 		res.end(sessionCookieId + '="' + sessionId + '"')
+	} else if (req.url.startsWith(tokenPrefix)) {
+		var token = req.url.substr(tokenPrefix.length)
+		console.log('authenticating', token)
+		jlc.authenticate(token, function(emailAddress) {
+
+		})
 	} else if (!servePublicContent(req, res)) {
 		serveContentFromRepo(req, res)
 	}
