@@ -1,3 +1,5 @@
+require('es6-shim')
+
 var st = require('st')
 var socketio = require('socket.io')
 var Cookie = require('cookies')
@@ -6,10 +8,10 @@ var userAccess = require('./authenticated-users')
 var JustLoginCore = require('just-login-core')
 var justLoginDebouncer = require('just-login-debouncer')
 var levelmem = require('level-mem')
+var emailer = require('just-login-emailer')
 
 var http = require('http')
 var path = require('path')
-require('es6-shim')
 
 var publicPath = '/public'
 var sessionCookieId = 'sweetSessionIdentifier'
@@ -19,10 +21,15 @@ function public(str) {
 	return path.join(publicPath, str)
 }
 
-module.exports = function(privateContentPath, jlcDb) {
+module.exports = function(privateContentPath, jlcDb, transportOptions, defaultMailOptions, getEmailText) {
 	var jlc = JustLoginCore(jlcDb)
 	var debounceDb = levelmem('debouncing')
 	justLoginDebouncer(jlc, debounceDb)
+	emailer(jlc, getEmailText, transportOptions, defaultMailOptions, function(err) {
+		if (err) {
+			console.error(err.message || err)
+		}
+	})
 
 	var serveContentFromRepo = st({
 		path: privateContentPath,
@@ -120,8 +127,6 @@ function socketHandler(jlc, userHasAccess, socket) {
 					if (err.debounce) {
 						socket.emit('warning', 'Too many login requests! Please wait ' + Math.round(credentials.remaining / 1000) + ' seconds.')
 					}
-				} else {
-					console.log(credentials.contactAddress, tokenPrefix + credentials.token)
 				}
 			})
 		}

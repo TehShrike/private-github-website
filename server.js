@@ -41,7 +41,29 @@ function getRepoOptions() {
 
 var options = {
 	path: path.join(os.tmpdir(), Math.random().toString().slice(2)),
-	db: levelmem('lol')
+	db: levelmem('lol'),
+	transportOptions: {
+		host: 'smtp.mailserver.example.com',
+		// port: 587,
+		// secure: true,
+		// debug: true,
+		auth: {
+			user: '',
+			pass: ''
+		}
+	},
+	defaultMailOptions: {
+		from: 'login@mailserver.example.com',
+		subject: 'Log in to example.com'
+	},
+	smtpServer: 'mail.example.us',
+	getEmailText: function(token) {
+		var site = 'http://example.com'
+		var url = path.join(site, '/public/auth') + '?token=' + token
+		var emailHtml = '<p>Somebody is trying to log in as you!  If it was you, you should click on' + 'this handy link'.link(url) + '</p>'
+			+ '<p>If it wasn\'t you, you should definitely NOT click on that link.</p>'
+		return emailHtml
+	}
 }
 
 fs.mkdirSync(options.path)

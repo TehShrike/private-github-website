@@ -12,5 +12,4 @@ Check out [server.js](https://github.com/TehShrike/private-github-website/blob/m
 
 ## Todo
 
-- user feedback that an email has been sent
-- actually sending emails
+- logging out

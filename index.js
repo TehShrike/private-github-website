@@ -1,5 +1,3 @@
-require('es6-shim')
-
 var privateContentServer = require('./private-content-server')
 var userAccess = require('./authenticated-users')
 
@@ -13,6 +11,9 @@ module.exports = function createServer(github, repoOptions, options) {
 	options = options || {}
 	options.path = options.path || path.join(os.tmpdir(), Math.random().toString().slice(2))
 	options.db = options.db || levelmem('jlc')
+	options.getEmailText = options.getEmailText || function getEmailText(token) {
+		return 'Your login token is ' + token
+	}
 
 
 	function syncRepoToDisk() {
@@ -25,6 +26,6 @@ module.exports = function createServer(github, repoOptions, options) {
 	setInterval(syncRepoToDisk, options.refresh || 60 * 1000).unref()
 	syncRepoToDisk()
 
-	return privateContentServer(options.path, options.db)
+	return privateContentServer(options.path, options.db, options.transportOptions, options.defaultMailOptions, options.getEmailText)
 }
 
