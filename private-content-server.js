@@ -4,7 +4,6 @@ var st = require('st')
 var socketio = require('socket.io')
 var Cookie = require('cookies')
 var uuid = require('random-uuid-v4')
-var userAccess = require('./authenticated-users')
 var JustLoginCore = require('just-login-core')
 var justLoginDebouncer = require('just-login-debouncer')
 var levelmem = require('level-mem')
@@ -21,18 +20,34 @@ function public(str) {
 	return path.join(publicPath, str)
 }
 
-module.exports = function(privateContentPath, jlcDb, transportOptions, defaultMailOptions, getEmailText) {
-	var jlc = JustLoginCore(jlcDb)
+function checkFor(obj, property) {
+	if (!obj || typeof obj[property] === 'undefined') {
+		throw new Error('Options must have "' + property + '" property')
+	}
+}
+
+module.exports = function(options) {
+	checkFor(options, 'privateContentPath')
+	checkFor(options, 'transportOptions')
+	checkFor(options, 'defaultMailOptions')
+	checkFor(options, 'getEmailText')
+
+	var jlc = JustLoginCore(options.db || levelmem('jlcDb'))
 	var debounceDb = levelmem('debouncing')
+	var usersWithAccess = {}
 	justLoginDebouncer(jlc, debounceDb)
-	emailer(jlc, getEmailText, transportOptions, defaultMailOptions, function(err) {
+	emailer(jlc, options.getEmailText, options.transportOptions, options.defaultMailOptions, function(err) {
 		if (err) {
 			console.error(err.message || err)
 		}
 	})
 
+	function userHasAccess(emailAddress) {
+		return !!usersWithAccess[emailAddress.toLowerCase()]
+	}
+
 	var serveContentFromRepo = st({
-		path: privateContentPath,
+		path: options.privateContentPath,
 		index: 'index.html',
 		passthrough: false
 	})
@@ -47,8 +62,23 @@ module.exports = function(privateContentPath, jlcDb, transportOptions, defaultMa
 	var server = http.createServer()
 	var io = socketio(server)
 
-	server.on('request', httpHandler.bind(null, serveContentFromRepo, servePublicContent, io, jlc, userAccess.hasAccess))
-	io.on('connection', socketHandler.bind(null, jlc, userAccess.hasAccess))
+	server.on('request', httpHandler.bind(null, serveContentFromRepo, servePublicContent, io, jlc, userHasAccess))
+	io.on('connection', socketHandler.bind(null, jlc, userHasAccess))
+
+	server.updateUsers = function updateUsers(contents) {
+		try {
+			var userEmailAddresses = JSON.parse(contents)
+
+			usersWithAccess = userEmailAddresses.map(function lc(str) {
+				return str.toLowerCase()
+			}).reduce(function(o, address) {
+				o[address] = true
+				return o
+			}, {})
+		} catch (e) {
+			console.error(e)
+		}
+	}
 
 	return server
 }
@@ -123,9 +153,10 @@ function socketHandler(jlc, userHasAccess, socket) {
 		if (sessionId && emailAddress) {
 			jlc.beginAuthentication(sessionId, emailAddress, function(err, credentials) {
 				if (err) {
-					console.log('error?!?!?!', err.message || err)
 					if (err.debounce) {
 						socket.emit('warning', 'Too many login requests! Please wait ' + Math.round(credentials.remaining / 1000) + ' seconds.')
+					} else {
+						console.error('error?!?!?!', err.message || err)
 					}
 				}
 			})
