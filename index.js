@@ -19,7 +19,8 @@ module.exports = function createServer(github, repoOptions, options) {
 		transportOptions: options.transportOptions,
 		defaultMailOptions: options.defaultMailOptions,
 		getEmailText: options.getEmailText,
-		db: options.db
+		db: options.db,
+		domain: options.domain
 	})
 
 	function reloadUsersWithAccess() {
