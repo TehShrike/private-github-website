@@ -1,4 +1,4 @@
-var privateContentServer = require('./private-content-server')
+var privateContentServer = require('private-static-website')
 
 var sync = require('sync-github-to-fs')
 var concat = require('concat-stream')
