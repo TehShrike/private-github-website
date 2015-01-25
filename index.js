@@ -32,7 +32,7 @@ module.exports = function createServer(github, repoOptions, options) {
 		sync(github, repoOptions, options.path).then(reloadUsersWithAccess)
 	}
 
-	setInterval(syncRepoToDisk, options.refresh || 60 * 1000).unref()
+	setInterval(syncRepoToDisk, options.refresh || 5 * 60 * 60 * 1000).unref()
 	syncRepoToDisk()
 
 	return server
