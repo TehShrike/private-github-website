@@ -1,6 +1,6 @@
 {
   "name": "private-github-website",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -12,5 +12,9 @@
     "concat-stream": "^1.4.7",
     "private-static-website": "^1.0.0",
     "sync-github-to-fs": "^1.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TehShrike/private-github-website.git"
   }
 }
