@@ -16,5 +16,8 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/TehShrike/private-github-website.git"
+  },
+  "devDependencies": {
+    "github": "^0.2.3"
   }
 }

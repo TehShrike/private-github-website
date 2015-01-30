@@ -3,43 +3,52 @@ var privateContentServer = require('private-static-website')
 var sync = require('sync-github-to-fs')
 var concat = require('concat-stream')
 
-var path = require('path')
+var joinPath = require('path').join
 var os = require('os')
 var fs = require('fs')
+var http = require('http')
 
 module.exports = function createServer(github, repoOptions, options) {
 	options = options || {}
-	options.path = options.path || randomTmpDirectory()
-	options.getEmailText = options.getEmailText || function getEmailText(token) {
+	var path = options.path || randomTmpDirectory()
+	var usersJsonPath = joinPath(path, 'users.json')
+	var refreshInterval = options.refresh || 5 * 60 * 60 * 1000
+	var getEmailText = options.getEmailText || function getEmailText(token) {
 		return 'Your login token is ' + token
 	}
 
-	var server = privateContentServer({
-		privateContentPath: options.path,
+	var server = options.server || http.createServer()
+
+	// server.on('request', function(req, res) {
+	// 	res.end('done')
+	// })
+
+	var privateServer = privateContentServer({
+		privateContentPath: path,
 		transportOptions: options.transportOptions,
 		defaultMailOptions: options.defaultMailOptions,
-		getEmailText: options.getEmailText,
+		getEmailText: getEmailText,
 		db: options.db,
 		domain: options.domain
-	})
+	}, server)
+
 
 	function reloadUsersWithAccess() {
-		var usersJsonPath = path.join(options.path, 'users.json')
-		fs.createReadStream(usersJsonPath).pipe(concat(server.updateUsers))
+		fs.createReadStream(usersJsonPath).pipe(concat(privateServer.updateUsers))
 	}
 
 	function syncRepoToDisk() {
-		sync(github, repoOptions, options.path).then(reloadUsersWithAccess)
+		sync(github, repoOptions, path).then(reloadUsersWithAccess)
 	}
 
-	setInterval(syncRepoToDisk, options.refresh || 5 * 60 * 60 * 1000).unref()
+	setInterval(syncRepoToDisk, refreshInterval).unref()
 	syncRepoToDisk()
 
-	return server
+	return privateServer
 }
 
 function randomTmpDirectory() {
-	var tmpDir = path.join(os.tmpdir(), Math.random().toString().slice(2))
+	var tmpDir = joinPath(os.tmpdir(), Math.random().toString().slice(2))
 	fs.mkdirSync(tmpDir)
 	return tmpDir
 }
