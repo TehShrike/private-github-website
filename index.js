@@ -1,3 +1,5 @@
+require('loud-rejection')()
+
 const privateContentServer = require('private-static-website')
 
 const sync = require('sync-github-to-fs')

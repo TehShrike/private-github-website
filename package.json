@@ -10,6 +10,7 @@
   "license": "WTFPL",
   "dependencies": {
     "concat-stream": "~1.4.7",
+    "loud-rejection": "1.6.0",
     "private-static-website": "~1.2.1",
     "sync-github-to-fs": "~2.0.0"
   },
