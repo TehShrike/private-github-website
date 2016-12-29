@@ -1,35 +1,36 @@
-var privateContentServer = require('private-static-website')
+const privateContentServer = require('private-static-website')
 
-var sync = require('sync-github-to-fs')
-var concat = require('concat-stream')
+const sync = require('sync-github-to-fs')
+const concat = require('concat-stream')
 
-var joinPath = require('path').join
-var os = require('os')
-var fs = require('fs')
-var http = require('http')
+const joinPath = require('path').join
+const os = require('os')
+const fs = require('fs')
+const http = require('http')
 
-module.exports = function createServer(github, repoOptions, options) {
-	options = options || {}
-	var path = options.path || randomTmpDirectory()
-	var usersJsonPath = joinPath(path, 'users.json')
-	var refreshInterval = options.refresh || 5 * 60 * 60 * 1000
-	var getEmailText = options.getEmailText || function getEmailText(token) {
-		return 'Your login token is ' + token
-	}
+module.exports = function createServer(github, repoOptions, options = {}) {
+	const {
+		refresh,
+		transportOptions,
+		defaultMailOptions,
+		db,
+		domain
+	} = options
 
-	var server = options.server || http.createServer()
+	const path = options.path || randomTmpDirectory()
+	const usersJsonPath = joinPath(path, 'users.json')
+	const refreshInterval = refresh || 5 * 60 * 60 * 1000
+	const getEmailText = options.getEmailText || defaultGetEmailText
 
-	// server.on('request', function(req, res) {
-	// 	res.end('done')
-	// })
+	const server = options.server || http.createServer()
 
-	var privateServer = privateContentServer({
+	const privateServer = privateContentServer({
 		privateContentPath: path,
-		transportOptions: options.transportOptions,
-		defaultMailOptions: options.defaultMailOptions,
+		transportOptions,
+		defaultMailOptions,
 		getEmailText: getEmailText,
-		db: options.db,
-		domain: options.domain
+		db,
+		domain
 	}, server)
 
 
@@ -48,7 +49,11 @@ module.exports = function createServer(github, repoOptions, options) {
 }
 
 function randomTmpDirectory() {
-	var tmpDir = joinPath(os.tmpdir(), Math.random().toString().slice(2))
+	const tmpDir = joinPath(os.tmpdir(), Math.random().toString().slice(2))
 	fs.mkdirSync(tmpDir)
 	return tmpDir
+}
+
+function defaultGetEmailText(token) {
+	return `Your login token is ${token}`
 }
