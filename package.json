@@ -10,8 +10,9 @@
   "license": "WTFPL",
   "dependencies": {
     "concat-stream": "~1.4.7",
+    "gzip-all": "1.0.0",
     "loud-rejection": "1.6.0",
-    "private-static-website": "~1.3.0",
+    "private-static-website": "~1.4.0",
     "sync-github-to-fs": "~2.0.0"
   },
   "repository": {

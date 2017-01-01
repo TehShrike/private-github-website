@@ -3,6 +3,7 @@ require('loud-rejection')()
 const privateContentServer = require('private-static-website')
 
 const sync = require('sync-github-to-fs')
+const gzipAll = require('gzip-all')
 const concat = require('concat-stream')
 
 const joinPath = require('path').join
@@ -40,8 +41,17 @@ module.exports = function createServer(github, repoOptions, options = {}) {
 		fs.createReadStream(usersJsonPath).pipe(concat(privateServer.updateUsers))
 	}
 
+	function createGzippedVersionsOfFiles() {
+		return gzipAll(addTrailingSlashIfNeedBe(path) + '**/*.!(png|jpg|jpeg|gif)', {
+			root: '/'
+		})
+	}
+
 	function syncRepoToDisk() {
-		sync(github, repoOptions, path).then(reloadUsersWithAccess)
+		sync(github, repoOptions, path).then(() => {
+			createGzippedVersionsOfFiles()
+			reloadUsersWithAccess()
+		})
 	}
 
 	setInterval(syncRepoToDisk, refreshInterval).unref()
@@ -58,4 +68,8 @@ function randomTmpDirectory() {
 
 function defaultGetEmailText(token) {
 	return `Your login token is ${token}`
+}
+
+function addTrailingSlashIfNeedBe(path) {
+	return path[path.length - 1] === '/' ? path : `${path}/`
 }
